@@ -33,6 +33,7 @@ Depth estimation is essential in autonomous driving, AR/VR, and robotics. This p
 - 🔹 Save outputs as videos in `output/` folder
 - 🔹 Simple UI with Streamlit
 
+ 
 ---
 
 ## 🛠️ Installation
