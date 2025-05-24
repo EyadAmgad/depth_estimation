@@ -2,7 +2,7 @@
 
 > A Computer Vision project for estimating depth from real-time webcam input using MiDaS models.
 
-![Teaser](assets/teaser.png) 
+![Teaser](teaser.png) 
 
 ---
 
