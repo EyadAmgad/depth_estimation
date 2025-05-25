@@ -1,0 +1,47 @@
+import torch
+import torch.nn as nn
+from torchvision.models.vision_transformer import vit_b_16  # Pretrained ViT
+
+class SimpleDPT(nn.Module):
+    def __init__(self):
+        super(SimpleDPT, self).__init__()
+        
+        # Load pretrained ViT backbone
+        self.backbone = vit_b_16(pretrained=True)
+        self.backbone.heads = nn.Identity()  # Remove classification head
+        
+        self.reduce_dim = nn.Conv2d(768, 256, kernel_size=1)
+        
+        # Simple decoder
+        self.decoder = nn.Sequential(
+            nn.Conv2d(256, 128, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
+            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
+            nn.Conv2d(64, 1, kernel_size=1)  # Output depth map
+        )
+    
+    def forward(self, x):
+        B, C, H, W = x.shape
+        
+        # ViT expects flat patches: [B, 3, 224, 224]
+        x = nn.functional.interpolate(x, size=(224, 224), mode='bilinear')
+        
+        # Run through ViT
+        tokens = self.backbone._process_input(x)  # Embed patches
+        x = self.backbone.encoder(tokens)  # Transformer encoding
+        x = x[:, 1:]  # Remove CLS token
+        
+        # Reshape transformer output back to 2D feature map
+        x = x.transpose(1, 2).reshape(B, 768, 14, 14)  # 14x14 is ViT patch grid
+        
+        x = self.reduce_dim(x)  # Reduce dim to 256
+        
+        # Decode to depth map
+        x = self.decoder(x)
+        
+        # Resize to original input size
+        x = nn.functional.interpolate(x, size=(H, W), mode='bilinear', align_corners=False)
+        return x
